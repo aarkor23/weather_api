@@ -36,7 +36,7 @@ def get_geocoding(city, country_code, limit= 1):
     # Loading API key
     api_key = os.getenv("api_key")
     if not api_key:
-        logger.error(f"API key not found.")
+        logger.error("API key not found.")
         raise ValueError("API key not found.")
 
     url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit={limit}&appid={api_key}"
@@ -82,6 +82,7 @@ weather_data = get_weather(lat, lon)
 
 # function to get needed data from API call
 def select_data(data):
+    logger.info("Data is selected for import to database.")
     selected_data = {
         "id": data["id"],
         "timestamp": data["dt"],
@@ -97,13 +98,12 @@ def select_data(data):
     }
     return selected_data
 
-
-
+extracted_data = select_data(weather_data)
 
 # function to connect to database(MySQL)
 def db_connect():
     # Load file with credentials to log into DB
-    logger.info(f"Loading credentials.")
+    logger.info(f"Loading credentials for database.")
     load_dotenv()
 
     try:
@@ -118,6 +118,7 @@ def db_connect():
     except mysql.connector.Error as err:
         logger.error(f"Database connection error: {err}")
         raise
+    return db
 
 def execute_query(db, query, params=None):
     try:
@@ -125,7 +126,9 @@ def execute_query(db, query, params=None):
             logger.info(f"Executing query: {query}")
             cursor.execute(query, params or ())
             result = cursor.fetchall()
-            logger.info(f"Query executed successfully.")
+            logger.info(f"Query {query} executed successfully.")
+            db.commit()
+            logger.info("Query was committed successfully.")
             return result
     except mysql.connector.Error as err:
         logger.error(f"Database query error: {err}")
@@ -135,8 +138,8 @@ def execute_query(db, query, params=None):
 # SQL query to check if table exists
 current_weather_table = """
     CREATE TABLE IF NOT EXISTS current_weather (
-        id SERIAL PRIMARY KEY,
-        timestamp TIMESTAMP,
+        id INTEGER,
+        timestamp INTEGER,
         timezone INTEGER,
         windspeed FLOAT,
         country VARCHAR(50),
@@ -156,19 +159,23 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s)
 
 # extracting values
 params = (
-    weather_data["id"],
-    weather_data["timestamp"],
-    weather_data["timezone"],
-    weather_data["windspeed"],
-    weather_data["country"],
-    weather_data["city"],
-    weather_data["humidity"],
-    weather_data["pressure"],
-    weather_data["temp"],
-    weather_data["temp_max"],
-    weather_data["temp_min"]
+    extracted_data["id"],
+    extracted_data["timestamp"],
+    extracted_data["timezone"],
+    extracted_data["windspeed"],
+    extracted_data["country"],
+    extracted_data["city"],
+    extracted_data["humidity"],
+    extracted_data["pressure"],
+    extracted_data["temp"],
+    extracted_data["temp_max"],
+    extracted_data["temp_min"]
 )
 
+# Execute queries to load data
+db = db_connect()
+execute_query(db, current_weather_table)
+execute_query(db, current_weather_insert, params)
 
 
 
