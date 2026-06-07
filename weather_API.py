@@ -76,6 +76,7 @@ def get_weather(lat, lon):
         print(f"Error: {e}")
         return None
 
+# maybe add list of cities to retrieve data from more than one station
 lat, lon = get_geocoding("Auckland", "NZ")
 weather_data = get_weather(lat, lon)
 
@@ -137,7 +138,8 @@ def execute_query(db, query, params=None):
 
 # SQL query to check if table exists
 current_weather_table = """
-    CREATE TABLE IF NOT EXISTS current_weather (
+    CREATE TABLE IF NOT EXISTS current_weather_2 (
+        row_id INT AUTO_INCREMENT PRIMARY KEY,
         id INTEGER,
         timestamp INTEGER,
         timezone INTEGER,
@@ -153,7 +155,7 @@ current_weather_table = """
 """
 # SQL query to insert data
 current_weather_insert = """
-INSERT INTO current_weather (id, timestamp, timezone, windspeed, country, city, humidity, pressure, temp, temp_max, temp_min)
+INSERT INTO current_weather_2 (id, timestamp, timezone, windspeed, country, city, humidity, pressure, temp, temp_max, temp_min)
 VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s)
 """
 
