@@ -81,7 +81,13 @@ def plot_temperature(data):
 
 plot_temperature(df)
 
+def plot_humidity(data):
+    logger.info("Plotting humidity plot.")
+    pass
 
+def plot_wind(data):
+    logger.info("Plotting wind plot.")
+    pass
 
 
 

@@ -76,30 +76,51 @@ def get_weather(lat, lon):
         print(f"Error: {e}")
         return None
 
-# maybe add list of cities to retrieve data from more than one station
-lat, lon = get_geocoding("Auckland", "NZ")
-weather_data = get_weather(lat, lon)
+
+cities = {
+    "Auckland": "NZ",
+    "Brisbane": "AU",
+    "Tokyo":    "JP",
+    "New York": "USA"
+}
+
+def getting_lon_lat(city_list):
+    weather_data = []
+    for city, country in cities.items():
+        lat, lon = get_geocoding(city, country)
+        weather_data.append(get_weather(lat, lon))
+    return weather_data
+
+weather_cities = getting_lon_lat(cities)
+
 
 
 # function to get needed data from API call
 def select_data(data):
     logger.info("Data is selected for import to database.")
-    selected_data = {
-        "id": data["id"],
-        "timestamp": data["dt"],
-        "timezone": data["timezone"],
-        "windspeed": data["wind"]["speed"],
-        "country": data["sys"]["country"],
-        "city": data["name"],
-        "humidity": data["main"]["humidity"],
-        "pressure": data["main"]["pressure"],
-        "temp": data["main"]["temp"],
-        "temp_max": data["main"]["temp_max"],
-        "temp_min": data["main"]["temp_min"]
-    }
+    selected_data = []
+    for city_data in data:
+        if city_data["name"] == "Marunouchi":
+            city_data["name"] ="Tokyo"
+        city_dict = {
+            "id": city_data["id"],
+            "timestamp": city_data["dt"],
+            "timezone": city_data["timezone"],
+            "windspeed": city_data["wind"]["speed"],
+            "country": city_data["sys"]["country"],
+            "city": city_data["name"],
+            "humidity": city_data["main"]["humidity"],
+            "pressure": city_data["main"]["pressure"],
+            "temp": city_data["main"]["temp"],
+            "temp_max": city_data["main"]["temp_max"],
+            "temp_min": city_data["main"]["temp_min"]
+        }
+        selected_data.append(city_dict)
+
     return selected_data
 
-extracted_data = select_data(weather_data)
+extracted_data = select_data(weather_cities)
+
 
 # function to connect to database(MySQL)
 def db_connect():
@@ -122,11 +143,16 @@ def db_connect():
     return db
 
 def execute_query(db, query, params=None):
+    result = None
     try:
         with db.cursor() as cursor:
             logger.info(f"Executing query: {query}")
-            cursor.execute(query, params or ())
-            result = cursor.fetchall()
+            if params:
+                cursor.executemany(query, params)
+            else:
+                cursor.execute(query)
+            if query.strip().upper().startswith("SELECT"):
+                result = cursor.fetchall()
             logger.info(f"Query {query} executed successfully.")
             db.commit()
             logger.info("Query was committed successfully.")
@@ -160,24 +186,15 @@ VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s)
 """
 
 # extracting values
-params = (
-    extracted_data["id"],
-    extracted_data["timestamp"],
-    extracted_data["timezone"],
-    extracted_data["windspeed"],
-    extracted_data["country"],
-    extracted_data["city"],
-    extracted_data["humidity"],
-    extracted_data["pressure"],
-    extracted_data["temp"],
-    extracted_data["temp_max"],
-    extracted_data["temp_min"]
-)
+all_params = [
+    tuple(d.values()) for d in extracted_data]
+
+
 
 # Execute queries to load data
 db = db_connect()
 execute_query(db, current_weather_table)
-execute_query(db, current_weather_insert, params)
+execute_query(db, current_weather_insert, all_params)
 
 
 
