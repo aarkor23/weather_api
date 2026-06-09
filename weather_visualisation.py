@@ -5,6 +5,7 @@ import mysql.connector
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import numpy as np
 
 # Basic configuration: log level, format, and output destination
 logging.basicConfig(
@@ -61,7 +62,12 @@ def temperature_conversion(data):
     logger.info("Temperature conversion from Kelvin to Celsius completed.")
     return data
 
-temperature_conversion(df)
+df_conversion = temperature_conversion(df)
+
+df_conversion["city"] = np.where(df_conversion["city"] == "Japan",
+                                 "Tokyo",
+                                 df_conversion["city"])
+
 
 def plot_temperature(data):
     logger.info("Plotting temperature plot.")
@@ -74,21 +80,47 @@ def plot_temperature(data):
 
     ax.set_title("Temperature over Time")
     ax.set_xlabel("Time")
-    ax.set_ylabel("Temperature")
+    ax.set_ylabel("Temperature (C°)")
     ax.legend()
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
     plt.show()
 
-plot_temperature(df)
+plot_temperature(df_conversion)
 
 def plot_humidity(data):
     logger.info("Plotting humidity plot.")
-    pass
+    ig, ax = plt.subplots(figsize=(12, 6))
+
+    for city, group in data.groupby("city"):
+        group = group.sort_values(by="time")
+        line, = ax.plot(group["time"], group["humidity"], marker="o", label=city)
+
+
+    ax.set_title("Humidity over Time")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Humidity (%)")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
+    plt.show()
+
+plot_humidity(df_conversion)
 
 def plot_wind(data):
     logger.info("Plotting wind plot.")
-    pass
+    fig, ax = plt.subplots(figsize=(12, 6))
 
+    for city, group in data.groupby("city"):
+        group = group.sort_values(by="time")
+        line, = ax.plot(group["time"], group["windspeed"], marker="o", label=city)
+
+    ax.set_title("Wind speed over Time")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Wind speed")
+    ax.legend()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
+    plt.show()
+
+plot_wind(df_conversion)
 
 
 
